@@ -246,6 +246,36 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+.header-controls .pipeline-control {
+  display: flex;
+  align-items: center;
+  gap: 5px; /* Spacing between label and select */
+}
+
+.header-controls .pipeline-control label {
+  /* Style for "Pipeline:" text */
+  font-size: 14px;
+  color: #333; /* Match other header text if not white */
+  font-weight: 500;
+  white-space: nowrap; /* Prevent label from wrapping */
+}
+
+.header-controls .pipeline-control #pipeline-select {
+  background-color: #f0f0f0; 
+  color: #333;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 7px 10px;
+  font-size: 14px;
+  height: 36px; 
+}
+
+.header-controls .pipeline-control #pipeline-select:hover {
+  background-color: #e0e0e0; 
+  border-color: #bbb;
+}
+
+
 /* Make both containers equal width */
 .bot-container,
 .debug-panel {

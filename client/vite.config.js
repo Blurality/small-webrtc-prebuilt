@@ -10,7 +10,7 @@ export default defineConfig({
     proxy: {
       // Proxy /api requests to the backend server
       "/api": {
-        target: "http://0.0.0.0:7860", // Replace with your backend URL
+        target: "http://0.0.0.0:8000", // Your FastAPI backend
         changeOrigin: true,
       },
     },

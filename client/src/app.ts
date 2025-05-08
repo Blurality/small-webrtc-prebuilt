@@ -9,6 +9,7 @@ import {
   Participant,
   RTVIClient,
   RTVIClientOptions,
+  BotLLMTextData,
 } from "@pipecat-ai/client-js";
 import "./style.css";
 import { VoiceVisualizer } from "./voice-visualizer";
@@ -37,6 +38,7 @@ class WebRTCApp {
   private selfViewVideo!: HTMLVideoElement;
   private videoContainer!: HTMLElement;
   private botName!: HTMLElement;
+  private pipelineSelectElement!: HTMLSelectElement;
 
   // State
   private connected: boolean = false;
@@ -52,6 +54,7 @@ class WebRTCApp {
     this.setupDOMElements();
     this.setupDOMEventListeners();
     this.initializeRTVIClient();
+    this.fetchAndPopulatePipelines();
 
     // Get bot name from URL query if available
     const urlParams = new URLSearchParams(window.location.search);
@@ -74,7 +77,7 @@ class WebRTCApp {
     });
   }
 
-  private initializeRTVIClient(): void {
+  private initializeRTVIClient(pipelineNameToUse?: string): void {
     const transport = new SmallWebRTCTransport();
 
     // Configure the transport with any codec preferences
@@ -85,12 +88,23 @@ class WebRTCApp {
       transport.setVideoCodec(this.videoCodec.value);
     }
 
+    const currentSelectedPipeline =
+      pipelineNameToUse ||
+      this.pipelineSelectElement?.value ||
+      "multiplayers_pipecat_pipeline";
+
+    this.log(
+      `Initializing RTVIClient with pipeline: ${currentSelectedPipeline}`
+    );
+
     const RTVIConfig: RTVIClientOptions = {
       // need to understand why it is complaining
       // @ts-ignore
       transport,
       params: {
-        baseUrl: "/api/offer",
+        baseUrl: `/api/offer?pipeline_name=${encodeURIComponent(
+          currentSelectedPipeline
+        )}`,
       },
       enableMic: true, // We'll control actual muting with enableMic() later
       enableCam: !this.cameraMuted, // Start with camera off by default
@@ -131,7 +145,7 @@ class WebRTCApp {
             this.log(`User transcript: ${transcript.text}`);
           }
         },
-        onBotTranscript: (transcript) => {
+        onBotTranscript: (transcript: BotLLMTextData) => {
           this.log(`Bot transcript: ${transcript.text}`);
         },
 
@@ -228,6 +242,9 @@ class WebRTCApp {
       "bot-video-container"
     ) as HTMLElement;
     this.botName = document.getElementById("bot-name") as HTMLElement;
+    this.pipelineSelectElement = document.getElementById(
+      "pipeline-select"
+    ) as HTMLSelectElement;
   }
 
   private setupDOMEventListeners(): void {
@@ -625,6 +642,8 @@ class WebRTCApp {
         this.smallWebRTCTransport.setVideoCodec(this.videoCodec.value);
       }
 
+      this.initializeRTVIClient(this.pipelineSelectElement.value);
+
       // Enable or disable mic/camera based on current state
       this.rtviClient.enableMic(!this.micMuted);
       this.rtviClient.enableCam(!this.cameraMuted);
@@ -679,6 +698,73 @@ class WebRTCApp {
   // Public method for external access (e.g. from event handlers)
   public shutdown(): void {
     void this.stop();
+  }
+
+  private async fetchAndPopulatePipelines(): Promise<void> {
+    try {
+      this.log("Fetching available pipelines from /api/list_pipelines...");
+      const response = await fetch("/api/list_pipelines");
+      if (!response.ok) {
+        throw new Error(
+          `Error fetching pipelines: ${response.statusText} (${response.status})`
+        );
+      }
+      const pipelines: string[] = await response.json();
+      this.log(`Pipelines received: ${pipelines.join(", ") || "None"}`);
+
+      if (!this.pipelineSelectElement) {
+        this.log(
+          "Warning: pipelineSelectElement is not initialized when fetchAndPopulatePipelines is run. Attempting to get it."
+        );
+        const selectEl = document.getElementById(
+          "pipeline-select"
+        ) as HTMLSelectElement | null;
+        if (selectEl) {
+          this.pipelineSelectElement = selectEl;
+        } else {
+          this.log("Fatal: Could not find pipeline-select element in DOM.");
+          return;
+        }
+      }
+
+      this.pipelineSelectElement.innerHTML = "";
+
+      if (pipelines.length === 0) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "No pipelines found";
+        this.pipelineSelectElement.appendChild(option);
+        this.pipelineSelectElement.disabled = true;
+      } else {
+        pipelines.forEach((pipelineName) => {
+          const option = document.createElement("option");
+          option.value = pipelineName;
+          option.textContent = pipelineName;
+          this.pipelineSelectElement.appendChild(option);
+        });
+        this.pipelineSelectElement.disabled = false;
+
+        const defaultPipeline = "default_pipeline";
+        if (pipelines.includes(defaultPipeline)) {
+          this.pipelineSelectElement.value = defaultPipeline;
+        } else if (pipelines.length > 0) {
+          this.pipelineSelectElement.value = pipelines[0];
+        }
+        this.log(
+          `Default pipeline selected in dropdown: ${this.pipelineSelectElement.value}`
+        );
+      }
+    } catch (error: any) {
+      this.log(`Error populating pipelines: ${error.message || error}`);
+      if (this.pipelineSelectElement) {
+        this.pipelineSelectElement.innerHTML = "";
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "Error loading pipelines";
+        this.pipelineSelectElement.appendChild(option);
+        this.pipelineSelectElement.disabled = true;
+      }
+    }
   }
 }
 

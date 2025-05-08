@@ -18,6 +18,14 @@
         <span id="bot-" class="app-title">Pipecat</span>
       </div>
       <div class="header-controls">
+        <!-- Pipeline Selection Dropdown -->
+        <div class="pipeline-control media-control" style="margin-right: 10px; border: 2px; padding: 5px;">
+          <label for="pipeline-select" style="margin-right: 5px; color: black;">Pipeline:</label>
+          <select id="pipeline-select" class="device-select" title="Select pipeline">
+            <option value="">Loading pipelines...</option>
+          </select>
+        </div>
+
         <!-- Camera toggle with dropdown -->
         <div class="media-control">
           <button id="camera-toggle" class="header-btn" data-state="muted" title="Turn on camera">
